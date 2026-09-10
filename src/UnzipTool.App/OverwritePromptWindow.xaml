@@ -1,0 +1,16 @@
+<Window x:Class="UnzipTool.App.OverwritePromptWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="目标已存在" Height="180" Width="520" WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize" ShowInTaskbar="False">
+    <StackPanel Margin="16">
+        <TextBlock Text="目标文件已存在：" FontWeight="Bold"/>
+        <TextBox x:Name="PathText" IsReadOnly="True" Margin="0,6,0,12" TextWrapping="Wrap"/>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+            <CheckBox x:Name="ApplyAll" Content="全部套用" VerticalAlignment="Center" Margin="0,0,16,0"/>
+            <Button Content="覆盖" Width="70" Margin="4,0" Click="OnOverwrite"/>
+            <Button Content="改名" Width="70" Margin="4,0" Click="OnRename"/>
+            <Button Content="跳过" Width="70" Margin="4,0" Click="OnSkip"/>
+        </StackPanel>
+    </StackPanel>
+</Window>
