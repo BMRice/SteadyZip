@@ -4,6 +4,14 @@
 artifacts/
 publish/
 
+# 根目录的发布产物（由 dotnet publish 生成，运行入口 SteadyZip.exe）
+/SteadyZip.exe
+/SteadyZip.dll
+/UnzipTool.Core.dll
+/SteadyZip.deps.json
+/SteadyZip.runtimeconfig.json
+/7z.dll
+
 # Visual Studio / Rider
 .vs/
 *.user

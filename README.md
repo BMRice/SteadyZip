@@ -30,7 +30,23 @@ dotnet run --project spike/VolumeDeleteSpike
 dotnet run --project src/UnzipTool.App
 ```
 
-`deps/7z/7z.dll` 会被各 EXE 项目自动复制到输出目录；7z.dll 需与 EXE 同目录（或从 7-Zip 安装目录复制）。创建 RAR 需要机器上装 WinRAR 的 `rar.exe`，缺失时界面自动置灰。
+### 直接运行（免命令行）
+
+发布到根目录：双击根目录的 `SteadyZip.exe` 即可（需本机已装 .NET 10 运行时）。同目录的 `SteadyZip.dll`、`UnzipTool.Core.dll`、`SteadyZip.deps.json`、`SteadyZip.runtimeconfig.json`、`7z.dll` 是运行所必需，需与 exe 放一起。
+
+重新生成根目录可运行文件：
+
+```powershell
+dotnet publish src/UnzipTool.App/UnzipTool.App.csproj -c Release --no-restore -o publish
+# 然后把 publish 里的 SteadyZip.exe / SteadyZip.dll / UnzipTool.Core.dll / SteadyZip.deps.json / SteadyZip.runtimeconfig.json
+# 以及 deps/7z/7z.dll 一起复制到根目录
+```
+
+> 生成**单个**自包含 exe（不依赖已装 .NET，约几十 MB）需要联网下载 .NET 运行时包，命令为：
+> `dotnet publish src/UnzipTool.App/UnzipTool.App.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true`。
+> 7z.dll 已作为嵌入资源打进程序集，运行时会自动解压到 `%LOCALAPPDATA%\SteadyZip`，因此该方式产出的单个 exe 也能用。
+
+创建 RAR 需要机器上装 WinRAR 的 `rar.exe`，缺失时界面自动置灰。
 
 ## 引擎路由（ADR-0001）
 

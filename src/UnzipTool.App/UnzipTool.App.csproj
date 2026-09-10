@@ -7,11 +7,15 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
     <RootNamespace>UnzipTool.App</RootNamespace>
+    <AssemblyName>SteadyZip</AssemblyName>
+    <ApplicationIcon />
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\UnzipTool.Core\UnzipTool.Core.csproj" />
-    <None Include="..\..\deps\7z\7z.dll" Link="7z.dll" CopyToOutputDirectory="PreserveNewest" />
+    <!-- 7z.dll is embedded so the app can be published as a single self-contained exe;
+         it is extracted to %LOCALAPPDATA%\SteadyZip at startup (see NativeBootstrap). -->
+    <EmbeddedResource Include="..\..\deps\7z\7z.dll" LogicalName="UnzipTool.App.sevenzip_native" />
   </ItemGroup>
 
 </Project>
