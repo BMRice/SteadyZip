@@ -38,7 +38,7 @@ public static class FormatDetection
         return ArchiveFormat.Unknown;
     }
 
-    private static bool IsPartRar(string name)
+    internal static bool IsPartRar(string name)
     {
         // foo.part1.rar
         int idx = name.IndexOf(".part", StringComparison.Ordinal);
@@ -64,4 +64,36 @@ public static class FormatDetection
         ArchiveFormat.TarBz2 => FormatIds.BZip2,
         _ => throw new NotSupportedException($"Unsupported format: {format}"),
     };
+
+    /// <summary>
+    /// CLSID for <em>reading</em> an archive. RAR is the one format 7z.dll splits across two
+    /// handlers — <c>Rar</c> for RAR4 and <c>Rar5</c> for RAR5 — and they share the .rar
+    /// extension, so the choice is made from the first volume's signature.
+    /// </summary>
+    internal static Guid GetClsidForOpen(ArchiveFormat format, string firstVolumePath)
+        => format == ArchiveFormat.Rar && IsRar5(firstVolumePath)
+            ? FormatIds.Rar5
+            : GetClsid(format);
+
+    /// <summary>
+    /// RAR5 files begin <c>52 61 72 21 1A 07 01 00</c>; RAR4 begins <c>52 61 72 21 1A 07 00</c>.
+    /// The 7th byte is the discriminator.
+    /// </summary>
+    private static bool IsRar5(string path)
+    {
+        Span<byte> head = stackalloc byte[8];
+        try
+        {
+            using var fs = File.OpenRead(path);
+            if (fs.Read(head) < 7)
+                return false;
+        }
+        catch (IOException)
+        {
+            return false; // let the engine report the real error when it opens the file
+        }
+
+        return head[0] == 0x52 && head[1] == 0x61 && head[2] == 0x72 && head[3] == 0x21
+            && head[4] == 0x1A && head[5] == 0x07 && head[6] == 0x01;
+    }
 }

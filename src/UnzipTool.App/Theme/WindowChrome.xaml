@@ -125,12 +125,15 @@
                                             shell:WindowChrome.IsHitTestVisibleInChrome="True">
                                     <Button x:Name="MinButton" Style="{StaticResource WindowButton}"
                                             Tag="{StaticResource Icon.Minimize}" ToolTip="最小化"
+                                            AutomationProperties.Name="最小化"
                                             Command="{x:Static SystemCommands.MinimizeWindowCommand}" />
                                     <Button x:Name="MaxButton" Style="{StaticResource WindowButton}"
                                             Tag="{StaticResource Icon.Maximize}" ToolTip="最大化"
+                                            AutomationProperties.Name="最大化"
                                             Command="{x:Static SystemCommands.MaximizeWindowCommand}" />
                                     <Button x:Name="CloseButton" Style="{StaticResource WindowCloseButton}"
                                             Tag="{StaticResource Icon.Close}" ToolTip="关闭"
+                                            AutomationProperties.Name="关闭"
                                             Command="{x:Static SystemCommands.CloseWindowCommand}" />
                                 </StackPanel>
                             </Grid>

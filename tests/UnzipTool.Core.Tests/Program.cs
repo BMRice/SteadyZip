@@ -79,6 +79,62 @@ try
     int remaining = vols.Count(v => File.Exists(v));
     Check(remaining == 0, $"delete-while-extract: all volumes deleted ({remaining} left)");
 
+    // --- RAR: 7z.dll ships separate handlers for RAR4 and RAR5, told apart by signature ---
+    string fixtureDir = Path.Combine(AppContext.BaseDirectory, "fixtures");
+
+    // Single volume, RAR5 — the common case, and what pins the RAR5 handler selection.
+    string rar5 = Path.Combine(fixtureDir, "rar5-single.rar");
+    var rar5c = engine.Open(rar5);
+    Check(rar5c.Entries.Count(e => !e.IsDirectory) == 2, "rar5 single: 2 files listed");
+    Check(rar5c.Entries.Any(e => e.IsDirectory && e.Path == "docs"), "rar5 single: folder listed");
+    Check(engine.Test(rar5).AllOk, "rar5 single: integrity test passes");
+
+    // Multi volume, RAR5 — .partN.rar volumes are independent archives, so 7z.dll must be
+    // given the sibling volumes rather than one concatenated stream.
+    string rar5v = Path.Combine(fixtureDir, "rar5-multivolume.part1.rar");
+    var rar5vc = engine.Open(rar5v);
+    Check(rar5vc.Entries.Count(e => !e.IsDirectory) == 3, "rar5 multivolume: 3 files listed");
+    Check(engine.Test(rar5v).AllOk, "rar5 multivolume: integrity test passes");
+
+    string rarOut = Path.Combine(work, "rarout");
+    Directory.CreateDirectory(rarOut);
+    var rarRep = engine.Extract(rar5v, new ExtractOptions
+    {
+        DestinationDirectory = rarOut,
+        ExtractToSubfolder = false,
+        Overwrite = OverwritePolicy.Overwrite,
+    });
+    Check(rarRep.AllOk, "rar5 multivolume: extraction succeeds");
+    Check(new FileInfo(Path.Combine(rarOut, "alpha.bin")).Length == 6000
+          && File.ReadAllText(Path.Combine(rarOut, "sub", "gamma.txt")) == "gamma-content",
+          "rar5 multivolume: contents round-trip");
+
+    // Delete-while-extracting must work for RAR too. It runs on a COPY so the committed
+    // fixture survives, and the assertion that matters is the mid-run snapshot: by the end
+    // every volume is gone either way (the engine also cleans up after a successful extract),
+    // so only "some volume was already gone while extraction was still running" proves that
+    // the volume was deleted as it was consumed rather than afterwards.
+    string rarCopyDir = Path.Combine(work, "rarcopy");
+    Directory.CreateDirectory(rarCopyDir);
+    var rarVols = VolumeSet.Enumerate(rar5v);
+    foreach (var v in rarVols)
+        File.Copy(v, Path.Combine(rarCopyDir, Path.GetFileName(v)));
+    int VolumesLeft() => rarVols.Count(v => File.Exists(Path.Combine(rarCopyDir, Path.GetFileName(v))));
+
+    int minLeftDuringRun = int.MaxValue;
+    var delRep = engine.Extract(Path.Combine(rarCopyDir, Path.GetFileName(rarVols[0])), new ExtractOptions
+    {
+        DestinationDirectory = Path.Combine(work, "rardelout"),
+        ExtractToSubfolder = false,
+        Overwrite = OverwritePolicy.Overwrite,
+        DeleteVolumesAfterRead = true,
+    }, new SyncProgress(_ => minLeftDuringRun = Math.Min(minLeftDuringRun, VolumesLeft())));
+
+    Check(delRep.AllOk, "rar delete-while-extract: extraction succeeds");
+    Check(minLeftDuringRun < rarVols.Count,
+          $"rar delete-while-extract: freed during extraction (low water mark {minLeftDuringRun}/{rarVols.Count})");
+    Check(VolumesLeft() == 0, $"rar delete-while-extract: all volumes gone ({VolumesLeft()} left)");
+
     // --- zip-slip guard ---
     Check(PathGuard.Sanitize("../evil.txt") is null, "pathguard: rejects ..");
     Check(PathGuard.Sanitize("C:\\evil.txt") is null, "pathguard: rejects drive path");
@@ -128,4 +184,13 @@ static string? FindSevenZipExe()
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "7-Zip", "7z.exe"),
     };
     return candidates.FirstOrDefault(File.Exists);
+}
+
+/// <summary>Reports inline instead of posting to the thread pool, so callbacks observed
+/// during extraction are seen in order and the low-water mark is not raced.</summary>
+sealed class SyncProgress : IProgress<ProgressUpdate>
+{
+    private readonly Action<ProgressUpdate> _onReport;
+    public SyncProgress(Action<ProgressUpdate> onReport) => _onReport = onReport;
+    public void Report(ProgressUpdate value) => _onReport(value);
 }

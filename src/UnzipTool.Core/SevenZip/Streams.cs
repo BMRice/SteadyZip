@@ -12,6 +12,11 @@ internal sealed class InStream : IInStream, ISequentialInStream, IStreamGetSize,
 
     public Stream BaseStream => _stream;
 
+    /// <summary>Invoked whenever 7z.dll actually consumes bytes from this stream. Used to
+    /// observe how far the handler has advanced through a volume set — see
+    /// <see cref="VolumeReaper"/>. Null for the ordinary single-stream case.</summary>
+    internal Action? OnRead { get; set; }
+
     public int Read(IntPtr data, uint size, IntPtr processedSize)
     {
         if (_buffer is null || _buffer.Length < size)
@@ -19,7 +24,10 @@ internal sealed class InStream : IInStream, ISequentialInStream, IStreamGetSize,
 
         int read = _stream.Read(_buffer, 0, (int)size);
         if (read > 0)
+        {
             Marshal.Copy(_buffer, 0, data, read);
+            OnRead?.Invoke();
+        }
         if (processedSize != IntPtr.Zero)
             Marshal.WriteInt32(processedSize, read);
         return 0;

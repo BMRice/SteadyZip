@@ -6,7 +6,7 @@
 
 **成立。** 用一个自定义 `IInStream`（`MultiVolumeStream`）把整套分卷按顺序拼成一个可 Seek 的逻辑流，直接喂给 7z.dll 的格式处理器（7z / zip），就绪后把"读尽某卷→删该卷"挂在"顺序读取越过卷边界"这一信号上，即可在解压期间逐卷永久删除源卷，且解出的文件与原始文件逐字节一致。
 
-spike 程序：`spike/VolumeDeleteSpike`。用 7z.exe（`-v64k`）造出 11 卷的 solid 7z / non-solid 7z / zip，再经 7z.dll COM 解压并删卷：
+spike 程序（一次性验证代码，结论落地后已删除）用 7z.exe（`-v64k`）造出 11 卷的 solid 7z / non-solid 7z / zip，再经 7z.dll COM 解压并删卷：
 
 | 用例 | 结果 |
 | --- | --- |

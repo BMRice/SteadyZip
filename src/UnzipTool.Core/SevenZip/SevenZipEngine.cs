@@ -32,6 +32,10 @@ internal sealed class OpenedArchive : IDisposable
     public required IInArchive Archive { get; init; }
     public required IDisposable Stream { get; init; }
     public required MultiVolumeStream? MultiVolume { get; init; }
+
+    /// <summary>Set for independent-archive volume sets (RAR .partN.rar), where deletion
+    /// during extraction is driven by read progress instead of by a concatenated stream.</summary>
+    public VolumeReaper? Reaper { get; init; }
     public required List<ArchiveEntry> Entries { get; init; }
     public required ArchiveFormat Format { get; init; }
     public required bool IsEncrypted { get; init; }
@@ -42,6 +46,8 @@ internal sealed class OpenedArchive : IDisposable
     {
         try { Archive.Close(); } catch { /* ignore */ }
         Stream.Dispose();
+        // 7z.dll never disposes the volume streams it was handed, so we do.
+        Reaper?.Dispose();
     }
 }
 
@@ -139,8 +145,14 @@ public sealed class SevenZipEngine
         // Phase 2: resolve targets, then extract (fresh open, delete-volumes armed if requested).
         var deleteVolumes = options.DeleteVolumesAfterRead;
         var handle = OpenInternal(path, foundPassword);
-        if (deleteVolumes && handle.MultiVolume is not null)
-            handle.MultiVolume.AllowDelete = true;
+        if (deleteVolumes)
+        {
+            // Armed only now: the header phase above has already touched every volume, and
+            // the full-CRC integrity test has passed.
+            if (handle.MultiVolume is not null)
+                handle.MultiVolume.AllowDelete = true;
+            handle.Reaper?.Arm();
+        }
 
         ExtractItem?[] items;
         IReadOnlyDictionary<uint, ExtractFileResult> results;
@@ -287,8 +299,14 @@ public sealed class SevenZipEngine
 
     private static string Describe(IReadOnlyDictionary<uint, ExtractFileResult> results)
     {
-        var bad = results.FirstOrDefault(kv => kv.Value != ExtractFileResult.Ok);
-        return bad.Value == default ? "unknown error" : $"{bad.Value}";
+        // Reached only when the run did not succeed, i.e. either nothing was reported at all
+        // or some item failed. "Nothing reported" is its own diagnosis — it is what a handler
+        // returns when it opens a file it does not actually understand (a RAR5 archive handed
+        // to the RAR4 handler, say), so do not dress it up as a per-file failure.
+        if (results.Count == 0)
+            return "archive opened but reported no testable items";
+
+        return $"{results.First(kv => kv.Value != ExtractFileResult.Ok).Value}";
     }
 
     private static bool AllOk(IReadOnlyDictionary<uint, ExtractFileResult> results)
@@ -300,15 +318,31 @@ public sealed class SevenZipEngine
         if (format == ArchiveFormat.Unknown)
             throw new NotSupportedException($"Unrecognized archive format: {path}");
 
-        var clsid = FormatDetection.GetClsid(format);
-        var archive = NativeMethods.Create<IInArchive>(clsid, Iids.IInArchive);
-
         var volumes = VolumeSet.Enumerate(path);
 
+        var clsid = FormatDetection.GetClsidForOpen(format, volumes.Count > 0 ? volumes[0] : path);
+        var archive = NativeMethods.Create<IInArchive>(clsid, Iids.IInArchive);
+
+        // RAR .partN.rar holds independent archives (each with its own headers), so the
+        // volumes cannot be concatenated — 7z.dll's Rar handler chains them itself through
+        // IArchiveOpenVolumeCallback. Byte-sliced sets (7z .001, zip .z01) are one archive
+        // cut into pieces, and those are concatenated by MultiVolumeStream instead.
+        bool independentVolumes = VolumeSet.AreIndependentVolumes(volumes);
+
         MultiVolumeStream? multi = null;
+        VolumeReaper? reaper = independentVolumes ? new VolumeReaper(volumes, trace) : null;
         IInStream stream;
         IDisposable disposable;
-        if (volumes.Count > 1)
+        if (independentVolumes)
+        {
+            // Volume 1 is handed over directly; the handler asks for the rest by name.
+            var s = new InStream(File.OpenRead(volumes[0]));
+            s.OnRead = () => reaper!.Touch(0);
+            reaper!.Register(0, s);
+            stream = s;
+            disposable = s;
+        }
+        else if (volumes.Count > 1)
         {
             multi = new MultiVolumeStream(volumes, trace);
             stream = multi;
@@ -321,7 +355,7 @@ public sealed class SevenZipEngine
             disposable = s;
         }
 
-        var callback = new OpenCallback(password);
+        var callback = new OpenCallback(password, reaper, trace);
         int hr = archive.Open(stream, IntPtr.Zero, callback);
         if (hr != HResult.S_OK)
         {
@@ -399,6 +433,7 @@ public sealed class SevenZipEngine
             Archive = archive,
             Stream = disposable,
             MultiVolume = multi,
+            Reaper = reaper,
             Entries = entries,
             Format = format,
             IsEncrypted = encrypted,

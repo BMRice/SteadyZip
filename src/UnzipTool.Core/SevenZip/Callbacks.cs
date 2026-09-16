@@ -9,24 +9,79 @@ internal static class HResult
 }
 
 /// <summary>
-/// Open callback for 7z.dll. Supplies the decryption password, and — for split
-/// archives — each subsequent volume via <see cref="IArchiveOpenVolumeCallback"/>.
-/// This is also the seam for the "delete volume once its data has been read" feature:
-/// when <see cref="DeleteVolumesAfterRead"/> is on, requesting volume N+1 disposes and
-/// permanently deletes volume N.
+/// Open callback handed to <c>IInArchive.Open</c>. Supplies the decryption password, and —
+/// for volume sets made of independent archives (RAR <c>.partN.rar</c>) — the remaining
+/// volumes by name via <see cref="IArchiveOpenVolumeCallback"/>, which is the only way
+/// 7z.dll's Rar handler can chain volumes that are not byte slices of one archive.
+/// Byte-sliced sets (7z <c>.001</c>, zip <c>.z01</c>) never reach these members; they are
+/// presented as one logical stream by <see cref="MultiVolumeStream"/> instead.
 /// </summary>
-/// <summary>Open callback: supplies the decryption password when 7z.dll asks for it.
-/// Volume handling lives in <see cref="MultiVolumeStream"/>; a single-volume archive
-/// uses a plain <see cref="InStream"/> and never needs a volume callback.</summary>
-internal sealed class OpenCallback : IArchiveOpenCallback, ICryptoGetTextPassword, ICryptoGetTextPassword2
+internal sealed class OpenCallback : IArchiveOpenCallback, IArchiveOpenVolumeCallback, ICryptoGetTextPassword, ICryptoGetTextPassword2
 {
-    private readonly string? _password;
+    /// <summary>
+    /// 7z.dll asks the volume callback for <c>kpidName</c>, which is 4 in the ordinary
+    /// <see cref="PropId"/> namespace (verified against 7z.dll 22.01 by tracing the calls:
+    /// it passes exactly 4). Answering a different PROPID makes the handler conclude the
+    /// set has a single volume — <c>NumVolumes</c> stays 1 and <c>GetStream</c> is never
+    /// called — which silently truncates the archive to its first volume.
+    /// </summary>
+    private const uint VolumeNamePropId = (uint)PropId.Name;
 
-    public OpenCallback(string? password) => _password = password;
+    private readonly string? _password;
+    private readonly VolumeReaper? _reaper;
+    private readonly Action<string>? _trace;
+
+    /// <param name="reaper">Owns the independent-archive volume set, when this archive is one.</param>
+    public OpenCallback(string? password, VolumeReaper? reaper = null, Action<string>? trace = null)
+    {
+        _password = password;
+        _reaper = reaper;
+        _trace = trace;
+    }
 
     // IArchiveOpenCallback
     public int SetTotal(IntPtr files, IntPtr bytes) => HResult.S_OK;
     public int SetCompleted(IntPtr files, IntPtr bytes) => HResult.S_OK;
+
+    // IArchiveOpenVolumeCallback — 7z.dll asks for the name of the volume it was handed,
+    // then requests siblings by that name pattern.
+    public int GetProperty(uint propID, ref PropVariant value)
+    {
+        _trace?.Invoke($"volume: GetProperty({propID})");
+        if (propID == VolumeNamePropId && _reaper is { Volumes.Count: > 0 } reaper)
+            value.SetBstr(Path.GetFileName(reaper.Volumes[0]));
+        return HResult.S_OK;
+    }
+
+    public int GetStream([MarshalAs(UnmanagedType.LPWStr)] string name, out IInStream inStream)
+    {
+        inStream = null!;
+        if (_reaper is not { } reaper)
+            return HResult.S_OK;
+
+        // Only hand back volumes the set actually contains, so 7z.dll can never wander
+        // outside it. No match => null stream => "no further volumes".
+        int index = -1;
+        for (int i = 0; i < reaper.Volumes.Count; i++)
+        {
+            if (string.Equals(Path.GetFileName(reaper.Volumes[i]), name, StringComparison.OrdinalIgnoreCase))
+            {
+                index = i;
+                break;
+            }
+        }
+
+        _trace?.Invoke($"volume: GetStream({name}) -> {(index < 0 ? "not in set" : Path.GetFileName(reaper.Volumes[index]))}");
+        if (index < 0)
+            return HResult.S_OK;
+
+        var stream = new InStream(File.OpenRead(reaper.Volumes[index]));
+        int captured = index;
+        stream.OnRead = () => reaper.Touch(captured);
+        reaper.Register(captured, stream);
+        inStream = stream;
+        return HResult.S_OK;
+    }
 
     // ICryptoGetTextPassword
     public int CryptoGetTextPassword([MarshalAs(UnmanagedType.BStr)] out string password)

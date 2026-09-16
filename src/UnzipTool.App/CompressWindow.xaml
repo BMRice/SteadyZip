@@ -32,7 +32,8 @@
                     </StackPanel>
                 </Grid>
 
-                <ListBox Grid.Row="1" x:Name="SourceList" Margin="0,10,0,0" SelectionMode="Extended">
+                <ListBox Grid.Row="1" x:Name="SourceList" Margin="0,10,0,0" SelectionMode="Extended"
+                         AutomationProperties.Name="待压缩文件列表">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
                             <StackPanel Orientation="Horizontal">
@@ -64,7 +65,8 @@
                     </Grid.ColumnDefinitions>
                     <TextBlock Grid.Column="0" Text="保存为" Style="{StaticResource Text.Label}"
                                Margin="0,0,8,0" />
-                    <TextBox Grid.Column="1" x:Name="DestBox" Margin="0,0,8,0" />
+                    <TextBox Grid.Column="1" x:Name="DestBox" Margin="0,0,8,0"
+                             AutomationProperties.Name="保存为" />
                     <Button Grid.Column="2" Content="浏览..." MinWidth="76" Click="OnBrowse" />
                 </Grid>
 
@@ -98,7 +100,8 @@
                     <TextBlock Grid.Row="0" Grid.Column="0" Text="格式" Style="{StaticResource Text.Label}"
                                Margin="0,0,8,0" />
                     <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal">
-                        <ComboBox x:Name="FormatBox" Width="120" SelectedIndex="1">
+                        <ComboBox x:Name="FormatBox" Width="120" SelectedIndex="1"
+                                  AutomationProperties.Name="格式">
                             <ComboBoxItem Content="ZIP" />
                             <ComboBoxItem Content="7z" />
                             <ComboBoxItem x:Name="RarItem" Content="RAR" />
@@ -110,7 +113,8 @@
                     <TextBlock Grid.Row="0" Grid.Column="3" Text="级别" Style="{StaticResource Text.Label}"
                                Margin="0,0,8,0" />
                     <ComboBox Grid.Row="0" Grid.Column="4" x:Name="LevelBox" Width="120"
-                               HorizontalAlignment="Left" SelectedIndex="2">
+                               HorizontalAlignment="Left" SelectedIndex="2"
+                               AutomationProperties.Name="压缩级别">
                         <ComboBoxItem Content="仅存" />
                         <ComboBoxItem Content="最快" />
                         <ComboBoxItem Content="标准" />
@@ -120,7 +124,7 @@
                     <TextBlock Grid.Row="1" Grid.Column="0" Text="分卷" Style="{StaticResource Text.Label}"
                                Margin="0,10,8,0" />
                     <ComboBox Grid.Row="1" Grid.Column="1" x:Name="VolumeBox" Width="120" HorizontalAlignment="Left"
-                              Margin="0,10,0,0" SelectedIndex="0">
+                              Margin="0,10,0,0" SelectedIndex="0" AutomationProperties.Name="分卷大小">
                         <ComboBoxItem Content="不拆分" />
                         <ComboBoxItem Content="700 MB" />
                         <ComboBoxItem Content="4 GB" />
@@ -130,11 +134,13 @@
                     <TextBlock Grid.Row="1" Grid.Column="3" Text="自定义大小" Style="{StaticResource Text.Label}"
                                Margin="0,10,8,0" />
                     <TextBox Grid.Row="1" Grid.Column="4" x:Name="VolumeCustom" Margin="0,10,0,0"
-                             ToolTip="如 100MB / 1.5GB / 500KB" IsEnabled="False" />
+                             ToolTip="如 100MB / 1.5GB / 500KB" IsEnabled="False"
+                             AutomationProperties.Name="自定义分卷大小" />
 
                     <TextBlock Grid.Row="2" Grid.Column="0" Text="密码" Style="{StaticResource Text.Label}"
                                Margin="0,10,8,0" />
-                    <TextBox Grid.Row="2" Grid.Column="1" x:Name="PasswordBox" Margin="0,10,0,0" />
+                    <TextBox Grid.Row="2" Grid.Column="1" x:Name="PasswordBox" Margin="0,10,0,0"
+                             AutomationProperties.Name="密码" />
 
                     <CheckBox Grid.Row="2" Grid.Column="3" Grid.ColumnSpan="2" x:Name="SolidBox"
                               Content="固实压缩（仅 7z）" Margin="0,10,0,0" />
@@ -156,7 +162,8 @@
                     </Grid.ColumnDefinitions>
 
                     <ProgressBar Grid.Column="0" x:Name="Progress" Width="200" Maximum="1"
-                                 VerticalAlignment="Center" Visibility="Collapsed" />
+                                 VerticalAlignment="Center" Visibility="Collapsed"
+                                 AutomationProperties.Name="进度" />
                     <TextBlock Grid.Column="1" x:Name="StatusText" Style="{StaticResource Text.Caption}"
                                Margin="12,0,12,0" VerticalAlignment="Center"
                                TextTrimming="CharacterEllipsis" />

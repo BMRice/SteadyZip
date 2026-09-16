@@ -20,7 +20,8 @@
                 BorderBrush="{StaticResource Brush.Border}" BorderThickness="0,0,0,1">
             <Grid Margin="8,0">
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <Button x:Name="OpenButton" Style="{StaticResource Button.Command}" Click="OnOpenClick">
+                    <Button x:Name="OpenButton" Style="{StaticResource Button.Command}" Click="OnOpenClick"
+                            AutomationProperties.Name="打开">
                         <StackPanel Orientation="Horizontal">
                             <Path Style="{StaticResource Icon.Command}" Data="{StaticResource Icon.Open}" />
                             <TextBlock Text="打开" Margin="6,0,0,0" VerticalAlignment="Center" />
@@ -28,7 +29,7 @@
                     </Button>
 
                     <Button x:Name="TestButton" Style="{StaticResource Button.Command}" IsEnabled="False"
-                            Click="OnTestClick" Margin="2,0,0,0">
+                            Click="OnTestClick" Margin="2,0,0,0" AutomationProperties.Name="测试">
                         <StackPanel Orientation="Horizontal">
                             <Path Style="{StaticResource Icon.Command}" Data="{StaticResource Icon.Test}" />
                             <TextBlock Text="测试" Margin="6,0,0,0" VerticalAlignment="Center" />
@@ -36,14 +37,15 @@
                     </Button>
 
                     <Button x:Name="ExtractCommandButton" Style="{StaticResource Button.Command}" IsEnabled="False"
-                            Click="OnExtractClick" Margin="2,0,0,0">
+                            Click="OnExtractClick" Margin="2,0,0,0" AutomationProperties.Name="解压">
                         <StackPanel Orientation="Horizontal">
                             <Path Style="{StaticResource Icon.Command}" Data="{StaticResource Icon.Extract}" />
                             <TextBlock Text="解压" Margin="6,0,0,0" VerticalAlignment="Center" />
                         </StackPanel>
                     </Button>
 
-                    <Button x:Name="CompressCommandButton" Style="{StaticResource Button.Command}" Click="OnCompressClick" Margin="2,0,0,0">
+                    <Button x:Name="CompressCommandButton" Style="{StaticResource Button.Command}" Click="OnCompressClick" Margin="2,0,0,0"
+                            AutomationProperties.Name="压缩">
                         <StackPanel Orientation="Horizontal">
                             <Path Style="{StaticResource Icon.Command}" Data="{StaticResource Icon.Compress}" />
                             <TextBlock Text="压缩" Margin="6,0,0,0" VerticalAlignment="Center" />
@@ -52,7 +54,8 @@
                 </StackPanel>
 
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                    <Button x:Name="PasswordsButton" Style="{StaticResource Button.Command}" Click="OnPasswordsClick">
+                    <Button x:Name="PasswordsButton" Style="{StaticResource Button.Command}" Click="OnPasswordsClick"
+                            AutomationProperties.Name="密码库">
                         <StackPanel Orientation="Horizontal">
                             <Path Style="{StaticResource Icon.Command}" Data="{StaticResource Icon.Key}" />
                             <TextBlock Text="密码库" Margin="6,0,0,0" VerticalAlignment="Center" />
@@ -60,7 +63,8 @@
                     </Button>
 
                     <Button x:Name="MoreButton" Style="{StaticResource Button.Command}" Width="36" Padding="0"
-                            Margin="2,0,0,0" ToolTip="更多" Click="OnMoreClick">
+                            Margin="2,0,0,0" ToolTip="更多" Click="OnMoreClick"
+                            AutomationProperties.Name="更多">
                         <Path Style="{StaticResource Icon.CommandFilled}" Data="{StaticResource Icon.More}" />
                         <Button.ContextMenu>
                             <ContextMenu x:Name="MoreMenu">
@@ -108,12 +112,13 @@
                             <GridViewColumn.Header>
                                 <CheckBox x:Name="HeaderCheckBox" Padding="0"
                                           IsChecked="{Binding SelectAll, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}"
-                                          ToolTip="全选 / 全不选" />
+                                          ToolTip="全选 / 全不选" AutomationProperties.Name="全选 / 全不选" />
                             </GridViewColumn.Header>
                             <GridViewColumn.CellTemplate>
                                 <DataTemplate>
                                     <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}"
-                                              HorizontalAlignment="Center" />
+                                              HorizontalAlignment="Center"
+                                              AutomationProperties.Name="{Binding Entry.Name}" />
                                 </DataTemplate>
                             </GridViewColumn.CellTemplate>
                         </GridViewColumn>
@@ -209,12 +214,14 @@
 
                 <TextBlock Grid.Row="0" Grid.Column="0" Text="目标" Style="{StaticResource Text.Label}"
                            Margin="0,0,8,0" />
-                <TextBox Grid.Row="0" Grid.Column="1" x:Name="DestBox" Margin="0,0,8,0" />
+                <TextBox Grid.Row="0" Grid.Column="1" x:Name="DestBox" Margin="0,0,8,0"
+                         AutomationProperties.Name="目标目录" />
                 <Button Grid.Row="0" Grid.Column="2" Content="浏览..." MinWidth="76" Click="OnBrowseDest"
                         Margin="0,0,24,0" />
                 <TextBlock Grid.Row="0" Grid.Column="3" Text="解压到" Style="{StaticResource Text.Label}"
                            Margin="0,0,8,0" />
-                <ComboBox Grid.Row="0" Grid.Column="4" x:Name="SubfolderBox" Width="150" SelectedIndex="0">
+                <ComboBox Grid.Row="0" Grid.Column="4" x:Name="SubfolderBox" Width="150" SelectedIndex="0"
+                          AutomationProperties.Name="解压到">
                     <ComboBoxItem Content="同名子文件夹" />
                     <ComboBoxItem Content="此处" />
                 </ComboBox>
@@ -222,7 +229,8 @@
                 <TextBlock Grid.Row="1" Grid.Column="0" Text="覆盖" Style="{StaticResource Text.Label}"
                            Margin="0,10,8,0" />
                 <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Margin="0,10,0,0">
-                    <ComboBox x:Name="OverwriteBox" Width="120" SelectedIndex="0" Margin="0,0,24,0">
+                    <ComboBox x:Name="OverwriteBox" Width="120" SelectedIndex="0" Margin="0,0,24,0"
+                              AutomationProperties.Name="覆盖策略">
                         <ComboBoxItem Content="询问" />
                         <ComboBoxItem Content="跳过" />
                         <ComboBoxItem Content="覆盖" />
@@ -249,7 +257,8 @@
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
-                <ProgressBar x:Name="Progress" Minimum="0" Maximum="1" VerticalAlignment="Center" />
+                <ProgressBar x:Name="Progress" Minimum="0" Maximum="1" VerticalAlignment="Center"
+                             AutomationProperties.Name="进度" />
 
                 <Grid Grid.Row="1" Margin="0,10,0,0">
                     <TextBlock x:Name="ProgressText" Style="{StaticResource Text.Caption}" VerticalAlignment="Center"

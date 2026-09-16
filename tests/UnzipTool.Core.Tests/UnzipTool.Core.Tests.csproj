@@ -10,6 +10,8 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\UnzipTool.Core\UnzipTool.Core.csproj" />
     <None Include="..\..\deps\7z\7z.dll" Link="7z.dll" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Committed fixtures, read from AppContext.BaseDirectory at run time. -->
+    <None Include="fixtures\**" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>
