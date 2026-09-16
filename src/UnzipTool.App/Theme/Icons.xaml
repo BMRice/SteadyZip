@@ -1,0 +1,99 @@
+<!-- Hand-drawn vector icons (docs/ui-design.md §4): 16x16 viewport, 1.5px stroke, round caps/joins.
+     No Segoe Fluent Icons (Win11-only) and no emoji/colour glyphs. -->
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="Colors.xaml" />
+    </ResourceDictionary.MergedDictionaries>
+
+    <!-- 应用 / 标题栏 -->
+    <PathGeometry x:Key="Icon.App" Figures="M2.5,3.5 H13.5 V12.5 H2.5 Z M2.5,6.5 H13.5 M6,6.5 V12.5" />
+
+    <!-- 窗口按钮 -->
+    <PathGeometry x:Key="Icon.Minimize" Figures="M3.5,8 H12.5" />
+    <PathGeometry x:Key="Icon.Maximize" Figures="M3.5,3.5 H12.5 V12.5 H3.5 Z" />
+    <PathGeometry x:Key="Icon.Restore" Figures="M5.5,5.5 V3.5 H12.5 V10.5 H10.5 M3.5,5.5 H10.5 V12.5 H3.5 Z" />
+    <PathGeometry x:Key="Icon.Close" Figures="M3.5,3.5 L12.5,12.5 M12.5,3.5 L3.5,12.5" />
+
+    <!-- 命令栏 -->
+    <PathGeometry x:Key="Icon.Open"
+                   Figures="M2,13 V4 A1,1 0 0 1 3,3 H6.3 L7.9,5 H12.5 A1,1 0 0 1 13.5,6 V7.4 M2,13 L4.1,7.7 A1,1 0 0 1 5,7.1 H15 A1,1 0 0 1 15.9,8.4 L14.4,12.4 A1,1 0 0 1 13.5,13 Z" />
+    <PathGeometry x:Key="Icon.Test"
+                   Figures="M1.8,8 A6.2,6.2 0 1 1 14.2,8 A6.2,6.2 0 1 1 1.8,8 Z M5,8.2 L7.1,10.3 L11.1,5.9" />
+    <PathGeometry x:Key="Icon.Extract"
+                   Figures="M8,2.2 V9.6 M4.9,6.5 L8,9.6 L11.1,6.5 M2.8,13.6 H13.2" />
+    <PathGeometry x:Key="Icon.Compress"
+                   Figures="M2.2,5.6 H13.8 V12.8 A0.8,0.8 0 0 1 13,13.6 H3 A0.8,0.8 0 0 1 2.2,12.8 Z M1.8,2.4 H14.2 V5.6 H1.8 Z M6.4,8.6 H9.6" />
+    <PathGeometry x:Key="Icon.Key"
+                   Figures="M3.2,10 A2.8,2.8 0 1 1 8.8,10 A2.8,2.8 0 1 1 3.2,10 Z M7.9,8.1 L13.6,2.4 M11.4,4.6 L13.2,6.4" />
+    <PathGeometry x:Key="Icon.More"
+                   Figures="M3,8 A1,1 0 1 1 5,8 A1,1 0 1 1 3,8 Z M7,8 A1,1 0 1 1 9,8 A1,1 0 1 1 7,8 Z M11,8 A1,1 0 1 1 13,8 A1,1 0 1 1 11,8 Z" />
+
+    <!-- 列表 / 信息条 -->
+    <PathGeometry x:Key="Icon.File" Figures="M3.5,2.5 H9.2 L12.5,5.8 V13.5 H3.5 Z M9.2,2.5 V5.8 H12.5" />
+    <PathGeometry x:Key="Icon.Folder"
+                   Figures="M2,12.5 V4 A1,1 0 0 1 3,3 H6.3 L7.9,5 H13 A1,1 0 0 1 14,6 V12.5 A1,1 0 0 1 13,13.5 H3 A1,1 0 0 1 2,12.5 Z" />
+    <PathGeometry x:Key="Icon.Volume" Figures="M8,2.2 L14,5 L8,7.8 L2,5 Z M2,8.2 L8,11 L14,8.2 M2,11.4 L8,14.2 L14,11.4" />
+    <PathGeometry x:Key="Icon.Lock"
+                   Figures="M4.6,7.2 V5.4 A3.4,3.4 0 0 1 11.4,5.4 V7.2 M3.1,7.2 H12.9 V13.1 A0.9,0.9 0 0 1 12,14 H4 A0.9,0.9 0 0 1 3.1,13.1 Z" />
+    <PathGeometry x:Key="Icon.Inbox"
+                   Figures="M2,9.2 H5.2 L6.2,11 H9.8 L10.8,9.2 H14 M2,9.2 L4.2,3 H11.8 L14,9.2 V12.6 A0.9,0.9 0 0 1 13.1,13.5 H2.9 A0.9,0.9 0 0 1 2,12.6 Z" />
+
+    <!-- 密码库 -->
+    <PathGeometry x:Key="Icon.Eye"
+                   Figures="M1.4,8 C3.5,4.7 5.7,3.3 8,3.3 C10.3,3.3 12.5,4.7 14.6,8 C12.5,11.3 10.3,12.7 8,12.7 C5.7,12.7 3.5,11.3 1.4,8 Z M5.6,8 A2.4,2.4 0 1 1 10.4,8 A2.4,2.4 0 1 1 5.6,8 Z" />
+    <PathGeometry x:Key="Icon.EyeOff"
+                   Figures="M1.4,8 C3.5,4.7 5.7,3.3 8,3.3 C10.3,3.3 12.5,4.7 14.6,8 C12.5,11.3 10.3,12.7 8,12.7 C5.7,12.7 3.5,11.3 1.4,8 Z M5.6,8 A2.4,2.4 0 1 1 10.4,8 A2.4,2.4 0 1 1 5.6,8 Z M2.8,2.8 L13.2,13.2" />
+
+    <!-- 通用 -->
+    <PathGeometry x:Key="Icon.Plus" Figures="M8,3.4 V12.6 M3.4,8 H12.6" />
+    <PathGeometry x:Key="Icon.Minus" Figures="M3.4,8 H12.6" />
+    <PathGeometry x:Key="Icon.Check" Figures="M3.6,8.3 L6.6,11.3 L12.4,5.2" />
+    <PathGeometry x:Key="Icon.ChevronDown" Figures="M3.8,6.2 L8,10.4 L12.2,6.2" />
+    <PathGeometry x:Key="Icon.ChevronUp" Figures="M3.8,9.8 L8,5.6 L12.2,9.8" />
+
+    <!-- 对话框 -->
+    <PathGeometry x:Key="Icon.Info"
+                   Figures="M1.8,8 A6.2,6.2 0 1 1 14.2,8 A6.2,6.2 0 1 1 1.8,8 Z M8,7.2 V11.4 M8,4.8 V5.2" />
+    <PathGeometry x:Key="Icon.Warning" Figures="M8,2.3 L14.6,13.4 H1.4 Z M8,6.3 V9.5 M8,11.3 V11.7" />
+    <PathGeometry x:Key="Icon.Error"
+                   Figures="M1.8,8 A6.2,6.2 0 1 1 14.2,8 A6.2,6.2 0 1 1 1.8,8 Z M5.8,5.8 L10.2,10.2 M10.2,5.8 L5.8,10.2" />
+
+    <!-- 描边图标（默认 16x16） -->
+    <Style x:Key="Icon" TargetType="Path">
+        <Setter Property="Width" Value="16" />
+        <Setter Property="Height" Value="16" />
+        <Setter Property="Stretch" Value="None" />
+        <Setter Property="Fill" Value="{StaticResource Brush.Transparent}" />
+        <Setter Property="Stroke" Value="{StaticResource Brush.TextSecondary}" />
+        <Setter Property="StrokeThickness" Value="1.5" />
+        <Setter Property="StrokeStartLineCap" Value="Round" />
+        <Setter Property="StrokeEndLineCap" Value="Round" />
+        <Setter Property="StrokeLineJoin" Value="Round" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <!-- 填充图标（圆点等） -->
+    <Style x:Key="Icon.Filled" TargetType="Path">
+        <Setter Property="Width" Value="16" />
+        <Setter Property="Height" Value="16" />
+        <Setter Property="Stretch" Value="None" />
+        <Setter Property="Fill" Value="{StaticResource Brush.TextSecondary}" />
+        <Setter Property="Stroke" Value="{x:Null}" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <!-- 跟随宿主按钮 Foreground，使悬停 / 禁用状态一并生效 -->
+    <Style x:Key="Icon.Command" TargetType="Path" BasedOn="{StaticResource Icon}">
+        <Setter Property="Stroke"
+                Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ButtonBase}}" />
+    </Style>
+
+    <!-- 溢出菜单「⋯」：三个实心圆点 -->
+    <Style x:Key="Icon.CommandFilled" TargetType="Path" BasedOn="{StaticResource Icon.Filled}">
+        <Setter Property="Fill"
+                Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ButtonBase}}" />
+    </Style>
+</ResourceDictionary>

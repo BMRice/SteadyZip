@@ -1,9 +1,10 @@
+using System.IO;
 using System.Windows;
 using UnzipTool.Core;
 
 namespace UnzipTool.App;
 
-public partial class OverwritePromptWindow : Window
+public partial class OverwritePromptWindow : AppWindow
 {
     public OverwriteAction Result { get; private set; } = OverwriteAction.Skip;
     public bool ApplyToAll { get; private set; }
@@ -11,7 +12,9 @@ public partial class OverwritePromptWindow : Window
     public OverwritePromptWindow(string path)
     {
         InitializeComponent();
-        PathText.Text = path;
+        DirText.Text = Path.GetDirectoryName(path) ?? "";
+        FileText.Text = Path.GetFileName(path);
+        Loaded += (_, _) => SkipButton.Focus(); // 跳过 is the safe default (docs/ui-design.md §6.4)
     }
 
     private void Finish(OverwriteAction action)

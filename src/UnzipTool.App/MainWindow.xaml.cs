@@ -11,6 +11,9 @@ public sealed class EntryVm : INotifyPropertyChanged
     public required ArchiveEntry Entry { get; init; }
     public string DisplayName { get; init; } = "";
     public string SizeText { get; init; } = "";
+    public string PackedText { get; init; } = "";
+    public string TimeText { get; init; } = "";
+    public Thickness Indent { get; init; }
     public string Kind => Entry.IsDirectory ? "目录" : "文件";
 
     private bool _isSelected = true;
@@ -25,7 +28,7 @@ public sealed class EntryVm : INotifyPropertyChanged
         => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 }
 
-public partial class MainWindow : Window
+public partial class MainWindow : AppWindow
 {
     private readonly EngineRouter _router = new();
     private readonly PasswordStore _passwords = new();
@@ -34,16 +37,30 @@ public partial class MainWindow : Window
     private string? _currentArchive;
     private string? _foundPassword;
     private ArchiveContents? _currentContents;
+    private bool _syncingSelection;
 
     // Decompression-bomb guard: warn before extracting past this total unpacked size.
     private const ulong BombWarningBytes = 100UL * 1024 * 1024 * 1024; // 100 GiB
+
+    /// <summary>List-header "select all" box. Two-way bound so the header stays in sync with
+    /// per-row checkboxes without any header element lookup.</summary>
+    public static readonly DependencyProperty SelectAllProperty = DependencyProperty.Register(
+        nameof(SelectAll), typeof(bool), typeof(MainWindow),
+        new PropertyMetadata(true, (d, e) => ((MainWindow)d).ApplySelectAll((bool)e.NewValue)));
+
+    public bool SelectAll
+    {
+        get => (bool)GetValue(SelectAllProperty);
+        set => SetValue(SelectAllProperty, value);
+    }
 
     public MainWindow()
     {
         InitializeComponent();
         EntryList.ItemsSource = _entries;
         DestBox.Text = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
-        EngineText.Text = $"7z.dll: {(_router.IsSevenZipAvailable ? "可用" : "缺失")} | rar.exe: {(_router.IsRarAvailable ? "可用" : "缺失(仅影响创建RAR)")}";
+        EngineText.Text = $"7z.dll: {(_router.IsSevenZipAvailable ? "可用" : "缺失")} | rar: {(_router.IsRarAvailable ? "可用" : "缺失")}";
+        UpdateCounts();
     }
 
     // ------------------------------------------------------------------ open / browse
@@ -88,8 +105,7 @@ public partial class MainWindow : Window
                 PopulateEntries(contents);
                 _currentArchive = path;
                 _foundPassword = pw;
-                string vol = contents.IsMultiVolume ? $"，{contents.Volumes.Count} 卷" : "";
-                StatusText.Text = $"{path} — {contents.Entries.Count} 项{vol}" + (contents.IsEncrypted ? "（加密）" : "");
+                ShowInfoBar(path, contents);
                 return;
             }
             catch (Exception)
@@ -98,7 +114,8 @@ public partial class MainWindow : Window
             }
         }
 
-        MessageBox.Show(this, "无法打开该压缩包（可能已损坏、格式不支持或需要密码）。", "打开失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+        MessageDialog.Show(this, MessageKind.Warning, "打开失败",
+            "无法打开该压缩包（可能已损坏、格式不支持或需要密码）。");
     }
 
     private void PopulateEntries(ArchiveContents contents)
@@ -108,14 +125,48 @@ public partial class MainWindow : Window
         foreach (var e in contents.Entries)
         {
             int depth = e.Path.Count(c => c == '/');
-            _entries.Add(new EntryVm
+            var vm = new EntryVm
             {
                 Entry = e,
-                DisplayName = new string(' ', depth * 4) + (e.IsDirectory ? e.Path.TrimEnd('/') : e.Path),
+                DisplayName = e.IsDirectory ? e.Path.TrimEnd('/') : e.Path,
                 SizeText = e.IsDirectory ? "" : FormatSize(e.Size),
-            });
+                PackedText = e.IsDirectory ? "" : FormatSize(e.PackedSize),
+                TimeText = e.ModifiedTime?.ToString("yyyy-MM-dd HH:mm") ?? "",
+                Indent = new Thickness(depth * 16, 0, 0, 0),
+            };
+            vm.PropertyChanged += OnEntryChanged;
+            _entries.Add(vm);
         }
+
+        SelectAll = true; // Reset the header box; the DP callback marks every entry selected.
+        TestButton.IsEnabled = true;
+        ExtractCommandButton.IsEnabled = true;
+        ExtractButton.IsEnabled = true;
+        EmptyState.Visibility = Visibility.Collapsed;
+        UpdateCounts();
     }
+
+    private void ShowInfoBar(string path, ArchiveContents contents)
+    {
+        InfoName.Text = System.IO.Path.GetFileName(path);
+        InfoMeta.Text = $"{FormatName(contents.Format)} · {FormatSize(contents.TotalUnpackedSize)}";
+
+        VolumeText.Text = $"{contents.Volumes.Count} 卷";
+        VolumeBadge.Visibility = contents.IsMultiVolume ? Visibility.Visible : Visibility.Collapsed;
+        EncryptBadge.Visibility = contents.IsEncrypted ? Visibility.Visible : Visibility.Collapsed;
+        InfoBar.Visibility = Visibility.Visible;
+    }
+
+    private static string FormatName(ArchiveFormat format) => format switch
+    {
+        ArchiveFormat.SevenZip => "7z",
+        ArchiveFormat.Zip => "zip",
+        ArchiveFormat.Rar => "rar",
+        ArchiveFormat.Tar => "tar",
+        ArchiveFormat.TarGz => "tar.gz",
+        ArchiveFormat.TarBz2 => "tar.bz2",
+        _ => "未知格式",
+    };
 
     private static string FormatSize(ulong bytes) => bytes switch
     {
@@ -124,6 +175,47 @@ public partial class MainWindow : Window
         < 1024L * 1024 * 1024 => $"{bytes / 1024.0 / 1024:0.#} MB",
         _ => $"{bytes / 1024.0 / 1024 / 1024:0.##} GB",
     };
+
+    // ------------------------------------------------------------------ selection
+
+    private void ApplySelectAll(bool value)
+    {
+        if (_syncingSelection) return;
+        _syncingSelection = true;
+        foreach (var x in _entries) x.IsSelected = value;
+        _syncingSelection = false;
+        UpdateCounts();
+    }
+
+    private void OnEntryChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(EntryVm.IsSelected) || _syncingSelection) return;
+        _syncingSelection = true;
+        SelectAll = _entries.Count > 0 && _entries.All(x => x.IsSelected);
+        _syncingSelection = false;
+        UpdateCounts();
+    }
+
+    private void UpdateCounts()
+    {
+        if (_entries.Count == 0)
+        {
+            CountsText.Text = "未打开压缩包";
+            return;
+        }
+        CountsText.Text = $"共 {_entries.Count} 项 · 已选 {_entries.Count(x => x.IsSelected)} 项";
+    }
+
+    private void OnSelectAll(object sender, RoutedEventArgs e) => SelectAll = true;
+
+    private void OnSelectNone(object sender, RoutedEventArgs e) => SelectAll = false;
+
+    private void OnMoreClick(object sender, RoutedEventArgs e)
+    {
+        MoreMenu.PlacementTarget = MoreButton;
+        MoreMenu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
+        MoreMenu.IsOpen = true;
+    }
 
     // ------------------------------------------------------------------ test / extract
 
@@ -141,17 +233,16 @@ public partial class MainWindow : Window
         var selected = _entries.Where(x => x.IsSelected).Select(x => x.Entry.Index).ToList();
         if (selected.Count == 0)
         {
-            MessageBox.Show(this, "未勾选任何文件。", "解压", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageDialog.Show(this, MessageKind.Info, "解压", "未勾选任何文件。");
             return;
         }
 
         // Decompression-bomb guard: confirm very large total unpacked size.
         if (_currentContents is { } c && c.TotalUnpackedSize > BombWarningBytes)
         {
-            var r = MessageBox.Show(this,
-                $"要解压的内容总大小约 {FormatSize(c.TotalUnpackedSize)}，超过 {FormatSize(BombWarningBytes)}。继续？",
-                "解压炸弹警告", MessageBoxButton.YesNo, MessageBoxImage.Warning);
-            if (r != MessageBoxResult.Yes)
+            bool go = MessageDialog.Confirm(this, "解压炸弹警告",
+                $"要解压的内容总大小约 {FormatSize(c.TotalUnpackedSize)}，超过 {FormatSize(BombWarningBytes)}。继续？");
+            if (!go)
                 return;
         }
 
@@ -209,12 +300,14 @@ public partial class MainWindow : Window
         _cancel = new CancellationTokenSource();
         CancelButton.IsEnabled = true;
         Progress.Value = 0;
+        ProgressArea.Visibility = Visibility.Visible;
+        ProgressText.Text = $"{verb}中...";
 
         var progress = new Progress<ProgressUpdate>(u =>
         {
             Progress.Value = u.Fraction;
             if (u.CurrentItem is not null)
-                StatusText.Text = $"{verb}: {u.CurrentItem}";
+                ProgressText.Text = $"{verb}中：{u.CurrentItem}";
         });
 
         Task.Run(() => work(progress))
@@ -225,11 +318,14 @@ public partial class MainWindow : Window
                 CancelButton.IsEnabled = false;
                 var report = t.Result;
                 Progress.Value = 1;
-                StatusText.Text = report.AllOk
+                ProgressText.Text = report.AllOk
                     ? $"{verb}完成：{report.OkCount} 个文件。"
-                    : $"{verb}失败：{string.Join("；", report.Errors.Take(5))}";
+                    : $"{verb}失败：{report.ErrorCount} 个文件。{string.Join("；", report.Errors.Take(3))}";
+
                 if (report.ErrorCount > 0 && verb == "解压")
-                    MessageBox.Show(this, string.Join("\n", report.Errors.Take(10)), "解压有错误", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    MessageDialog.Show(this, MessageKind.Error, "解压有错误",
+                        $"{report.ErrorCount} 个文件未能解压。",
+                        string.Join(Environment.NewLine, report.Errors.Take(50)));
             }, TaskScheduler.FromCurrentSynchronizationContext());
     }
 
@@ -251,20 +347,19 @@ public partial class MainWindow : Window
 
     // ------------------------------------------------------------------ helpers
 
-    private void OnSelectAll(object sender, RoutedEventArgs e)
-    {
-        foreach (var x in _entries) x.IsSelected = true;
-    }
-
-    private void OnSelectNone(object sender, RoutedEventArgs e)
-    {
-        foreach (var x in _entries) x.IsSelected = false;
-    }
-
     private void OnBrowseDest(object sender, RoutedEventArgs e)
     {
         var dlg = new Microsoft.Win32.OpenFolderDialog();
         if (dlg.ShowDialog() == true)
             DestBox.Text = dlg.FolderName;
+    }
+
+    /// <summary>GridView columns are fixed-width, so let the name column absorb the slack.</summary>
+    private void OnEntryListSizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        const double otherColumns = 36 + 100 + 100 + 70 + 150;
+        double available = e.NewSize.Width - otherColumns - SystemParameters.VerticalScrollBarWidth - 2;
+        if (available > 120 && Math.Abs(NameColumn.Width - available) > 0.5)
+            NameColumn.Width = available;
     }
 }

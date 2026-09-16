@@ -1,72 +1,172 @@
-<Window x:Class="UnzipTool.App.CompressWindow"
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="压缩" Height="460" Width="620" WindowStartupLocation="CenterOwner" ResizeMode="NoResize" ShowInTaskbar="False">
-    <DockPanel Margin="16">
-        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
-            <TextBlock x:Name="StatusText" VerticalAlignment="Center" Margin="0,0,16,0"/>
-            <ProgressBar x:Name="Progress" Width="180" Height="20" Maximum="1" VerticalAlignment="Center" Margin="0,0,16,0"/>
-            <Button Content="压缩" Width="90" Click="OnCompress"/>
-            <Button Content="取消" Width="70" Margin="8,0,0,0" Click="OnCancel"/>
-        </StackPanel>
+<local:AppWindow x:Class="UnzipTool.App.CompressWindow"
+                 xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                 xmlns:local="clr-namespace:UnzipTool.App"
+                 Style="{StaticResource Window.Dialog}"
+                 Title="新建压缩包" Width="640" Height="520" WindowStartupLocation="CenterOwner">
+    <Border Background="{StaticResource Brush.Surface}">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
 
-        <ScrollViewer VerticalScrollBarVisibility="Auto">
-            <StackPanel>
-                <TextBlock Text="要压缩的内容:" FontWeight="Bold"/>
-                <ListBox x:Name="SourceList" Height="110" Margin="0,4"/>
-                <StackPanel Orientation="Horizontal">
-                    <Button Content="添加文件..." Click="OnAddFiles"/>
-                    <Button Content="添加文件夹..." Margin="8,0,0,0" Click="OnAddFolder"/>
-                    <Button Content="移除" Margin="8,0,0,0" Click="OnRemove"/>
-                </StackPanel>
+            <Grid Grid.Row="0" Margin="20,16,20,16">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
 
-                <TextBlock Text="保存为:" FontWeight="Bold" Margin="0,16,0,0"/>
-                <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
-                    <TextBox x:Name="DestBox" Width="400"/>
-                    <Button Content="浏览..." Margin="8,0,0,0" Click="OnBrowse"/>
-                </StackPanel>
+                <!-- 要压缩的内容 -->
+                <Grid Grid.Row="0">
+                    <TextBlock Text="要压缩的内容" Style="{StaticResource Text.Body}" FontWeight="SemiBold"
+                               VerticalAlignment="Center" />
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Content="添加文件" MinWidth="84" Click="OnAddFiles" />
+                        <Button Content="添加文件夹" MinWidth="96" Margin="8,0,0,0" Click="OnAddFolder" />
+                        <Button Content="移除" MinWidth="72" Margin="8,0,0,0" Click="OnRemove" />
+                    </StackPanel>
+                </Grid>
 
-                <Grid Margin="0,16,0,0">
+                <ListBox Grid.Row="1" x:Name="SourceList" Margin="0,10,0,0" SelectionMode="Extended">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Orientation="Horizontal">
+                                <Path>
+                                    <Path.Style>
+                                        <Style TargetType="Path" BasedOn="{StaticResource Icon}">
+                                            <Setter Property="Data" Value="{StaticResource Icon.File}" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsDirectory}" Value="True">
+                                                    <Setter Property="Data" Value="{StaticResource Icon.Folder}" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Path.Style>
+                                </Path>
+                                <TextBlock Text="{Binding Path}" Margin="8,0,0,0" VerticalAlignment="Center"
+                                           TextTrimming="CharacterEllipsis" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+
+                <!-- 保存为 -->
+                <Grid Grid.Row="2" Margin="0,16,0,0">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="保存为" Style="{StaticResource Text.Label}"
+                               Margin="0,0,8,0" />
+                    <TextBox Grid.Column="1" x:Name="DestBox" Margin="0,0,8,0" />
+                    <Button Grid.Column="2" Content="浏览..." MinWidth="76" Click="OnBrowse" />
+                </Grid>
+
+                <!-- 参数 -->
+                <Grid Grid.Row="3" Margin="0,18,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="参数" FontSize="{StaticResource Font.Size.Caption}"
+                               Foreground="{StaticResource Brush.TextTertiary}" VerticalAlignment="Center" />
+                    <Border Grid.Column="1" Height="1" Margin="10,0,0,0" VerticalAlignment="Center"
+                            Background="{StaticResource Brush.Border}" />
+                </Grid>
+
+                <Grid Grid.Row="4" Margin="0,12,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="200" />
+                        <ColumnDefinition Width="28" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="200" />
+                        <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
                     <Grid.RowDefinitions>
-                        <RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
-                    <TextBlock Grid.Row="0" Grid.Column="0" Text="格式:" VerticalAlignment="Center" Margin="0,4"/>
-                    <ComboBox Grid.Row="0" Grid.Column="1" x:Name="FormatBox" Width="120" HorizontalAlignment="Left" SelectedIndex="1">
-                        <ComboBoxItem Content="ZIP"/>
-                        <ComboBoxItem Content="7z"/>
-                        <ComboBoxItem x:Name="RarItem" Content="RAR"/>
-                    </ComboBox>
-
-                    <TextBlock Grid.Row="1" Grid.Column="0" Text="压缩级别:" VerticalAlignment="Center" Margin="0,4"/>
-                    <ComboBox Grid.Row="1" Grid.Column="1" x:Name="LevelBox" Width="120" HorizontalAlignment="Left" SelectedIndex="2">
-                        <ComboBoxItem Content="仅存"/>
-                        <ComboBoxItem Content="最快"/>
-                        <ComboBoxItem Content="标准"/>
-                        <ComboBoxItem Content="最大"/>
-                    </ComboBox>
-
-                    <TextBlock Grid.Row="2" Grid.Column="0" Text="加密密码:" VerticalAlignment="Center" Margin="0,4"/>
-                    <TextBox Grid.Row="2" Grid.Column="1" x:Name="PasswordBox" Width="200" HorizontalAlignment="Left"/>
-
-                    <TextBlock Grid.Row="3" Grid.Column="0" Text="分卷大小:" VerticalAlignment="Center" Margin="0,4"/>
-                    <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal">
-                        <ComboBox x:Name="VolumeBox" Width="120" SelectedIndex="0">
-                            <ComboBoxItem Content="不拆分"/>
-                            <ComboBoxItem Content="700 MB"/>
-                            <ComboBoxItem Content="4 GB"/>
-                            <ComboBoxItem Content="自定义"/>
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="格式" Style="{StaticResource Text.Label}"
+                               Margin="0,0,8,0" />
+                    <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal">
+                        <ComboBox x:Name="FormatBox" Width="120" SelectedIndex="1">
+                            <ComboBoxItem Content="ZIP" />
+                            <ComboBoxItem Content="7z" />
+                            <ComboBoxItem x:Name="RarItem" Content="RAR" />
                         </ComboBox>
-                        <TextBox x:Name="VolumeCustom" Width="120" Margin="8,0,0,0" ToolTip="如 100MB / 1.5GB / 500KB" IsEnabled="False"/>
+                        <TextBlock x:Name="RarHint" Text="未找到 rar.exe" Style="{StaticResource Text.Hint}"
+                                   Margin="8,0,0,0" VerticalAlignment="Center" Visibility="Collapsed" />
                     </StackPanel>
 
-                    <CheckBox Grid.Row="4" Grid.Column="1" x:Name="SolidBox" Content="固实压缩（仅 7z）" Margin="0,8,0,0"/>
+                    <TextBlock Grid.Row="0" Grid.Column="3" Text="级别" Style="{StaticResource Text.Label}"
+                               Margin="0,0,8,0" />
+                    <ComboBox Grid.Row="0" Grid.Column="4" x:Name="LevelBox" Width="120"
+                               HorizontalAlignment="Left" SelectedIndex="2">
+                        <ComboBoxItem Content="仅存" />
+                        <ComboBoxItem Content="最快" />
+                        <ComboBoxItem Content="标准" />
+                        <ComboBoxItem Content="最大" />
+                    </ComboBox>
+
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="分卷" Style="{StaticResource Text.Label}"
+                               Margin="0,10,8,0" />
+                    <ComboBox Grid.Row="1" Grid.Column="1" x:Name="VolumeBox" Width="120" HorizontalAlignment="Left"
+                              Margin="0,10,0,0" SelectedIndex="0">
+                        <ComboBoxItem Content="不拆分" />
+                        <ComboBoxItem Content="700 MB" />
+                        <ComboBoxItem Content="4 GB" />
+                        <ComboBoxItem Content="自定义" />
+                    </ComboBox>
+
+                    <TextBlock Grid.Row="1" Grid.Column="3" Text="自定义大小" Style="{StaticResource Text.Label}"
+                               Margin="0,10,8,0" />
+                    <TextBox Grid.Row="1" Grid.Column="4" x:Name="VolumeCustom" Margin="0,10,0,0"
+                             ToolTip="如 100MB / 1.5GB / 500KB" IsEnabled="False" />
+
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="密码" Style="{StaticResource Text.Label}"
+                               Margin="0,10,8,0" />
+                    <TextBox Grid.Row="2" Grid.Column="1" x:Name="PasswordBox" Margin="0,10,0,0" />
+
+                    <CheckBox Grid.Row="2" Grid.Column="3" Grid.ColumnSpan="2" x:Name="SolidBox"
+                              Content="固实压缩（仅 7z）" Margin="0,10,0,0" />
                 </Grid>
-            </StackPanel>
-        </ScrollViewer>
-    </DockPanel>
-</Window>
+
+                <TextBlock Grid.Row="5" x:Name="HintText" Style="{StaticResource Text.Hint}"
+                           Foreground="{StaticResource Brush.Danger}" Margin="0,10,0,0"
+                           TextWrapping="Wrap" Visibility="Collapsed" />
+            </Grid>
+
+            <!-- 底部操作 -->
+            <Border Grid.Row="1" Background="{StaticResource Brush.Background}"
+                    BorderBrush="{StaticResource Brush.Border}" BorderThickness="0,1,0,0" Padding="20,12">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <ProgressBar Grid.Column="0" x:Name="Progress" Width="200" Maximum="1"
+                                 VerticalAlignment="Center" Visibility="Collapsed" />
+                    <TextBlock Grid.Column="1" x:Name="StatusText" Style="{StaticResource Text.Caption}"
+                               Margin="12,0,12,0" VerticalAlignment="Center"
+                               TextTrimming="CharacterEllipsis" />
+                    <StackPanel Grid.Column="2" Orientation="Horizontal">
+                        <Button Content="取消" MinWidth="80" Margin="0,0,8,0" Click="OnCancel" />
+                        <Button x:Name="CompressButton" Content="压缩" MinWidth="96"
+                                Style="{StaticResource Button.Primary}" Click="OnCompress" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Grid>
+    </Border>
+</local:AppWindow>
