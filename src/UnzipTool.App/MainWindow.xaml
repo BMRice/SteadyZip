@@ -105,7 +105,8 @@
 
         <!-- ============================ 文件列表 ============================ -->
         <Grid Grid.Row="2">
-            <ListView x:Name="EntryList" SelectionMode="Extended" SizeChanged="OnEntryListSizeChanged">
+            <ListView x:Name="EntryList" SelectionMode="Extended" SizeChanged="OnEntryListSizeChanged"
+                      AutomationProperties.Name="文件列表">
                 <ListView.View>
                     <GridView>
                         <GridViewColumn Width="36">

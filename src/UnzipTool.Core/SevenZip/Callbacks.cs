@@ -28,13 +28,18 @@ internal sealed class OpenCallback : IArchiveOpenCallback, IArchiveOpenVolumeCal
     private const uint VolumeNamePropId = (uint)PropId.Name;
 
     private readonly string? _password;
+    private readonly string? _volumeName;
     private readonly VolumeReaper? _reaper;
     private readonly Action<string>? _trace;
 
+    /// <param name="volumeName">Name of the file 7z.dll was handed. The handler asks for it as
+    /// <c>kpidName</c>; leaving it unanswered makes at least the Tar handler conclude the archive
+    /// is unreadable (S_FALSE) even when it is simply empty.</param>
     /// <param name="reaper">Owns the independent-archive volume set, when this archive is one.</param>
-    public OpenCallback(string? password, VolumeReaper? reaper = null, Action<string>? trace = null)
+    public OpenCallback(string? password, string? volumeName = null, VolumeReaper? reaper = null, Action<string>? trace = null)
     {
         _password = password;
+        _volumeName = volumeName;
         _reaper = reaper;
         _trace = trace;
     }
@@ -48,8 +53,8 @@ internal sealed class OpenCallback : IArchiveOpenCallback, IArchiveOpenVolumeCal
     public int GetProperty(uint propID, ref PropVariant value)
     {
         _trace?.Invoke($"volume: GetProperty({propID})");
-        if (propID == VolumeNamePropId && _reaper is { Volumes.Count: > 0 } reaper)
-            value.SetBstr(Path.GetFileName(reaper.Volumes[0]));
+        if (propID == VolumeNamePropId && _volumeName is not null)
+            value.SetBstr(_volumeName);
         return HResult.S_OK;
     }
 
@@ -83,16 +88,30 @@ internal sealed class OpenCallback : IArchiveOpenCallback, IArchiveOpenVolumeCal
         return HResult.S_OK;
     }
 
-    // ICryptoGetTextPassword
+    /// <summary>
+    /// Set once 7z.dll asks for a password. Only header-encrypted archives make it ask, so this
+    /// is how the engine tells "encrypted, and this password did not decrypt it" apart from
+    /// "genuinely empty archive" when the handler reports zero items — see
+    /// <see cref="ArchivePasswordException"/>.
+    /// </summary>
+    public bool PasswordRequested { get; private set; }
+
+    // ICryptoGetTextPassword — declining is how a callback says "I have no password". Answering
+    // S_OK with an empty BSTR instead claims that "" *is* the password: the handler then fails
+    // to decrypt the header and returns S_OK with zero items, which the caller cannot tell apart
+    // from an empty archive. That is why an encrypted archive whose password was already in the
+    // store listed nothing at all.
     public int CryptoGetTextPassword([MarshalAs(UnmanagedType.BStr)] out string password)
     {
+        PasswordRequested = true;
         password = _password ?? string.Empty;
-        return HResult.S_OK;
+        return _password is null ? HResult.E_ABORT : HResult.S_OK;
     }
 
     // ICryptoGetTextPassword2
     public int CryptoGetTextPassword2(out int passwordIsDefined, [MarshalAs(UnmanagedType.BStr)] out string password)
     {
+        PasswordRequested = true;
         passwordIsDefined = _password is null ? 0 : 1;
         password = _password ?? string.Empty;
         return HResult.S_OK;

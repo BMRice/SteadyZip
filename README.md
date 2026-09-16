@@ -56,6 +56,9 @@ dotnet publish src/UnzipTool.App/UnzipTool.App.csproj -c Release --no-restore -o
 
 - **COM 直绑**：`src/UnzipTool.Core/SevenZip/Interop.cs` 直接绑定 7z.dll 的 `CreateObject` 导出与全部 COM 接口。接口必须"平铺"声明（不做托管接口继承），否则 CLR 生成 CCW 时崩溃（ExecutionEngineException）。
 - **RAR 有两个处理器**：7z.dll 把 RAR4 和 RAR5 分成两个 handler（`Rar` = `…000110030000`，`Rar5` = `…000110CC0000`），扩展名都是 `.rar`，只能按文件签名（第 7 字节 `01`/`00`）区分，见 `FormatDetection.GetClsidForOpen`。把 RAR5 喂给 RAR4 处理器不会报错——它会以 `S_OK` + **0 个条目**收场，界面上表现为"选了包但列表是空的"。
+- **加密头部要"拒绝"而不是给空密码**：头部加密的包（`rar a -hp`），7z.dll 会向 open 回调索取密码。回调若回 `S_OK` + 空字符串，等于声明"密码就是空串"，处理器解不开头就以 `S_OK` + **0 个条目**收场——与"空压缩包"无法区分，界面上同样是"选了包但列表是空的"，而且密码库里已有的正确密码永远轮不到。回调必须在没有密码时返回 `E_ABORT`（`OpenCallback.CryptoGetTextPassword`）；引擎再用"处理是否索取过密码"（`PasswordRequested`）区分"头部已加密"与"真的是空包"，抛 `ArchivePasswordException`，界面据此弹出密码输入框。
+- **open 回调要回答 `kpidName`，且 `S_FALSE` 不能当"损坏"**：7z.dll 会向回调询问被交给它的文件名，回调若答空，Tar 处理器会判定打不开而回 `S_FALSE`——一个合法的空 `.tar` 因此被当成坏文件，`OpenCallback` 现在总是回答该名字。但反过来也不要把 `S_FALSE` 当作损坏信号：实测同一个空 `.tar`（1024 个零字节，7z.exe 能正常打开）在有的进程状态回 `S_FALSE`、有的回 `S_OK`，两者不可区分，所以损坏文件仍显示为空列表。原因见 `SevenZipEngine.OpenInternal` 的 `ponytail:` 注释。
+- **7z.dll 的 handler CLSID 要照抄**：`FormatIds.BZip2` 曾把 `…-1000-000110020000` 误写成 `…-000110020200`，指向不存在的类，`.tar.bz2` 一律以 `CLASS_E_CLASSNOTAVAILABLE` 失败。
 - **边解压边删卷**：`MultiVolumeStream` 把整套分卷拼成一个可 Seek 的逻辑流喂给格式处理器；顺序读取耗尽某卷时关闭并永久删除该卷（不进回收站），Seek 不删卷。详见 `docs/spike-0001-delete-volume-while-extracting.md`。
 - **RAR 分卷不能拼接**：`.partN.rar` 每卷都是独立压缩包，必须由 7z.dll 自己经 `IArchiveOpenVolumeCallback` 串卷（`OpenCallback`），拼接只会得到第一卷。删卷因此改用 `VolumeReaper`：它持有每个卷的文件句柄，实测 Rar5 处理器在解压期严格顺序读卷、不回退，于是"开始读第 N+1 卷"即判定第 N 卷已完成并删除。该判定依赖的是实测行为而非 7z.dll 的承诺，上限与升级路径见 `VolumeReaper` 的注释。
 - **分卷创建**：7z/zip/rar 分卷本质是"单个压缩包按固定大小切片"（spike 中字节级确认），故创建分卷 = 先生成单个压缩包到临时文件，再切片。

@@ -135,6 +135,37 @@ try
           $"rar delete-while-extract: freed during extraction (low water mark {minLeftDuringRun}/{rarVols.Count})");
     Check(VolumesLeft() == 0, $"rar delete-while-extract: all volumes gone ({VolumesLeft()} left)");
 
+    // Header-encrypted RAR5. 7z.dll asks the open callback for a password; a callback that
+    // answers "the password is ''" instead of declining makes the handler return S_OK with
+    // zero entries — indistinguishable from an empty archive, so the caller is told nothing
+    // and an archive whose password *is* in the store never gets that password tried.
+    string rar5hp = Path.Combine(fixtureDir, "rar5-encrypted-headers.rar");
+    Check(Throws<ArchivePasswordException>(() => engine.Open(rar5hp)),
+          "rar5 encrypted headers: open with no password asks for one");
+    Check(Throws<ArchivePasswordException>(() => engine.Open(rar5hp, "wrong")),
+          "rar5 encrypted headers: open with a wrong password asks for one");
+    var hp = engine.Open(rar5hp, "secret");
+    Check(hp.Entries.Count(e => !e.IsDirectory) == 2, "rar5 encrypted headers: correct password lists 2 files");
+    Check(hp.IsEncrypted, "rar5 encrypted headers: reported as encrypted");
+    var hpTest = engine.Test(rar5hp);
+    Check(!hpTest.AllOk && hpTest.Errors.Any(e => e.Contains("密码")),
+          "rar5 encrypted headers: test without password names the problem");
+    Check(engine.Test(rar5hp, new[] { "secret" }).AllOk, "rar5 encrypted headers: test with correct password passes");
+
+    // Genuinely empty archives are the case that must not be caught by the check above.
+    Check(engine.Open(Path.Combine(fixtureDir, "empty.zip")).Entries.Count == 0,
+          "empty zip: still opens with no entries");
+    // An empty tar is 1024 zero bytes (two 512-byte end-of-archive blocks). 7z.dll answers it with
+    // S_FALSE rather than S_OK in some process states, which is exactly why S_FALSE must not be
+    // treated as "corrupt" — see the note in SevenZipEngine.OpenInternal.
+    string emptyTar = Path.Combine(work, "empty.tar");
+    File.WriteAllBytes(emptyTar, new byte[1024]);
+    Check(engine.Open(emptyTar).Entries.Count == 0, "empty tar: still opens with no entries");
+
+    // tar.bz2 is advertised in the UI; its handler CLSID used to name no handler at all.
+    var tbz = engine.Open(Path.Combine(fixtureDir, "sample.tar.bz2"));
+    Check(tbz.Entries.Count(e => !e.IsDirectory) == 1, "tar.bz2: opens and lists its file");
+
     // --- zip-slip guard ---
     Check(PathGuard.Sanitize("../evil.txt") is null, "pathguard: rejects ..");
     Check(PathGuard.Sanitize("C:\\evil.txt") is null, "pathguard: rejects drive path");
@@ -157,6 +188,13 @@ try
 finally
 {
     try { Directory.Delete(work, recursive: true); } catch { /* best-effort */ }
+}
+
+static bool Throws<T>(Action act) where T : Exception
+{
+    try { act(); return false; }
+    catch (T) { return true; }
+    catch { return false; }
 }
 
 static int RunSevenZip(string sevenZip, string cmd, string archive)

@@ -41,3 +41,15 @@ public sealed class ArchiveContents
     public bool IsEncrypted { get; init; }
     public ulong TotalUnpackedSize { get; init; }
 }
+
+/// <summary>
+/// The archive's directory could not be read because the headers are encrypted and no usable
+/// password was available — which is different from "the archive is corrupt". 7z.dll signals
+/// the difference by asking the open callback for a password and aborting when the callback
+/// declines to supply one (see <c>OpenCallback.CryptoGetTextPassword</c>). Callers are
+/// expected to ask the user for a password and retry.
+/// </summary>
+public sealed class ArchivePasswordException : Exception
+{
+    public ArchivePasswordException() : base("压缩包已加密，需要密码。") { }
+}

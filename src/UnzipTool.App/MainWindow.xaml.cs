@@ -16,6 +16,10 @@ public sealed class EntryVm : INotifyPropertyChanged
     public Thickness Indent { get; init; }
     public string Kind => Entry.IsDirectory ? "目录" : "文件";
 
+    /// <summary>Accessible name of the list row — without this a screen reader announces the
+    /// view-model's type name.</summary>
+    public override string ToString() => DisplayName;
+
     private bool _isSelected = true;
     public bool IsSelected
     {
@@ -92,30 +96,80 @@ public partial class MainWindow : AppWindow
 
     private void OpenArchive(string path)
     {
-        var passwords = _passwords.Load();
         // Try no password first, then each stored password (header-encrypted archives need one).
         var candidates = new List<string?> { null };
-        candidates.AddRange(passwords);
+        candidates.AddRange(_passwords.Load());
 
+        bool encrypted = false;
         foreach (var pw in candidates)
         {
-            try
+            switch (TryOpen(path, pw))
             {
-                var contents = _router.Open(path, pw);
-                PopulateEntries(contents);
-                _currentArchive = path;
-                _foundPassword = pw;
-                ShowInfoBar(path, contents);
-                return;
-            }
-            catch (Exception)
-            {
-                // try next password
+                case OpenOutcome.Opened:
+                    return;
+                case OpenOutcome.NeedsPassword:
+                    encrypted = true;
+                    break;
             }
         }
 
-        MessageDialog.Show(this, MessageKind.Warning, "打开失败",
-            "无法打开该压缩包（可能已损坏、格式不支持或需要密码）。");
+        if (!encrypted)
+        {
+            MessageDialog.Show(this, MessageKind.Warning, "打开失败",
+                "无法打开该压缩包（可能已损坏、格式不支持或需要密码）。");
+            return;
+        }
+
+        // Every stored password was rejected, so ask for this archive's own password.
+        AskForPassword(path);
+    }
+
+    private enum OpenOutcome { Opened, NeedsPassword, Failed }
+
+    private OpenOutcome TryOpen(string path, string? password)
+    {
+        try
+        {
+            var contents = _router.Open(path, password);
+            PopulateEntries(contents);
+            _currentArchive = path;
+            _foundPassword = password;
+            ShowInfoBar(path, contents);
+            return OpenOutcome.Opened;
+        }
+        catch (ArchivePasswordException)
+        {
+            return OpenOutcome.NeedsPassword;
+        }
+        catch (Exception)
+        {
+            return OpenOutcome.Failed; // corrupt, unsupported or unreadable
+        }
+    }
+
+    /// <summary>Prompts until a password opens the archive, or the user gives up. Cancelling
+    /// leaves the previously opened archive alone rather than blanking the list.</summary>
+    private void AskForPassword(string path)
+    {
+        string? error = null;
+        while (true)
+        {
+            string? typed = PasswordPromptWindow.Ask(this, System.IO.Path.GetFileName(path), error);
+            if (typed is null)
+                return;
+            switch (TryOpen(path, typed))
+            {
+                case OpenOutcome.Opened:
+                    return;
+                case OpenOutcome.Failed:
+                    MessageDialog.Show(this, MessageKind.Warning, "打开失败",
+                        "无法打开该压缩包（可能已损坏或格式不支持）。");
+                    return;
+                case OpenOutcome.NeedsPassword:
+                    error = "密码不正确。";
+                    break;
+            }
+        }
     }
 
     private void PopulateEntries(ArchiveContents contents)

@@ -229,21 +229,22 @@
         </Style.Triggers>
     </Style>
 
-    <!-- ============================ TextBox ============================ -->
+    <!-- ==================== TextBox / PasswordBox ==================== -->
+    <!-- One look for both. PasswordBox is not a TextBoxBase, so a Style shared by the two cannot
+         have a TargetType of either; the common setters and the template live in a
+         Control-targeted base and only the text-specific setters are repeated. -->
 
-    <Style TargetType="TextBox">
+    <Style x:Key="Input.Base" TargetType="Control">
         <Setter Property="FontFamily" Value="{StaticResource Font.UI}" />
         <Setter Property="FontSize" Value="{StaticResource Font.Size.Body}" />
         <Setter Property="Height" Value="{StaticResource Size.ControlHeight}" />
         <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
-        <Setter Property="CaretBrush" Value="{StaticResource Brush.TextPrimary}" />
-        <Setter Property="SelectionBrush" Value="{StaticResource Brush.Accent}" />
         <Setter Property="Padding" Value="8,0" />
         <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="SnapsToDevicePixels" Value="True" />
         <Setter Property="Template">
             <Setter.Value>
-                <ControlTemplate TargetType="TextBox">
+                <ControlTemplate TargetType="Control">
                     <Border x:Name="bd" Background="{StaticResource Brush.Surface}"
                             BorderBrush="{StaticResource Brush.BorderStrong}"
                             BorderThickness="{StaticResource Border.Thin}"
@@ -269,6 +270,16 @@
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
+    </Style>
+
+    <Style TargetType="TextBox" BasedOn="{StaticResource Input.Base}">
+        <Setter Property="CaretBrush" Value="{StaticResource Brush.TextPrimary}" />
+        <Setter Property="SelectionBrush" Value="{StaticResource Brush.Accent}" />
+    </Style>
+
+    <Style TargetType="PasswordBox" BasedOn="{StaticResource Input.Base}">
+        <Setter Property="CaretBrush" Value="{StaticResource Brush.TextPrimary}" />
+        <Setter Property="SelectionBrush" Value="{StaticResource Brush.Accent}" />
     </Style>
 
     <!-- ============================ ComboBox ============================ -->

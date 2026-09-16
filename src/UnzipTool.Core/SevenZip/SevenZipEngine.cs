@@ -355,15 +355,39 @@ public sealed class SevenZipEngine
             disposable = s;
         }
 
-        var callback = new OpenCallback(password, reaper, trace);
+        // The handler will ask for the name of the file it was handed; answer with the first volume
+        // so it can name entries and (for RAR) look up siblings.
+        var callback = new OpenCallback(password, Path.GetFileName(volumes.Count > 0 ? volumes[0] : path), reaper, trace);
         int hr = archive.Open(stream, IntPtr.Zero, callback);
-        if (hr != HResult.S_OK)
+        uint count = 0;
+        if (hr == HResult.S_OK)
+            archive.GetNumberOfItems(out count);
+
+        // A header-encrypted archive whose password did not decrypt the headers comes back in more
+        // than one shape: E_ABORT when the callback declined to supply a password, S_FALSE when the
+        // one it supplied was wrong, and (observed too) S_OK with zero items. Only a header-
+        // encrypted archive makes the handler ask for a password at all, and that request is what
+        // tells all of these apart from a genuinely empty archive — which never asks, so it keeps
+        // opening with zero entries.
+        bool passwordProblem = hr == HResult.E_ABORT
+            || (callback.PasswordRequested && (hr != HResult.S_OK || count == 0));
+
+        if (hr != HResult.S_OK || passwordProblem)
         {
             disposable.Dispose();
+            reaper?.Dispose(); // 7z.dll never disposes the volume streams it was handed
+            if (passwordProblem)
+                throw new ArchivePasswordException();
+            // ponytail: S_FALSE ("this file is not my format") is NOT turned into an error. It is
+            // tempting — junk named .zip returns it, and so does 7z.exe erroring on the same file —
+            // but measured on 7z.dll 22.01 a valid empty .tar (1024 zero bytes, which 7z.exe opens
+            // happily) also comes back S_FALSE depending on what the process opened earlier, and
+            // once an empty tar has opened, the same file returns S_OK. The two are not
+            // distinguishable, so rejecting S_FALSE would make opening an empty tar fail
+            // intermittently. A corrupt archive therefore still shows an empty listing.
             Marshal.ThrowExceptionForHR(hr);
         }
 
-        archive.GetNumberOfItems(out uint count);
         var entries = new List<ArchiveEntry>((int)count);
         bool encrypted = false;
         ulong total = 0;
